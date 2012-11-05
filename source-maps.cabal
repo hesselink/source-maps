@@ -16,6 +16,7 @@ cabal-version:       >=1.8
 library
   exposed-modules:     SourceMaps
                      , SourceMaps.Concrete
+                     , SourceMaps.Generate
                      , SourceMaps.Parse
                      , SourceMaps.Types
   other-modules        Base64VLQ
