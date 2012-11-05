@@ -1,12 +1,12 @@
 {-# LANGUAGE DoAndIfThenElse #-}
-module Base64VLQ (decodeBase64VLQ, decodeBase64VLQState) where
+module Base64VLQ (encodeBase64VLQ, decodeBase64VLQ, decodeBase64VLQState) where
 
 import Control.Applicative
 import Control.Monad.Error (throwError)
 import Control.Monad.State (StateT, get, put)
 import Control.Monad.Trans (lift)
 import Data.Bits
-import Data.Char (ord)
+import Data.Char (ord, chr)
 import Data.Text (Text)
 import qualified Data.Text as Text
 
@@ -32,6 +32,19 @@ decodeBase64VLQ = go 0 0
              else return (fromVLQSigned newResult, rest)
         Nothing   -> throwError "Insufficient bits in decodeBase64VLQ." -- TODO: show original string
 
+encodeBase64VLQ :: Int -> Text
+encodeBase64VLQ = go . toVLQSigned
+  where
+    go vlq =
+      if done
+      then Text.singleton c
+      else c `Text.cons` go rest
+      where
+        digit = (vlq .&. baseMask) .|. if done then 0 else continuationBit
+        rest  = vlq `shiftR` baseShift
+        done  = rest == 0
+        c     = toBase64 digit
+
 fromBase64 :: Char -> Result Int
 fromBase64 c | c >= 'A' && c <= 'Z' = pure (ord c - 65)
              | c >= 'a' && c <= 'z' = pure (ord c - 71)
@@ -39,6 +52,14 @@ fromBase64 c | c >= 'A' && c <= 'Z' = pure (ord c - 65)
              | c == '+'             = pure 62
              | c == '/'             = pure 63
              | otherwise            = throwError $ "Incorrect character in fromBase64: " ++ [c]
+
+toBase64 :: Int -> Char
+toBase64 i | i >= 0  && i <= 25 = chr (i + 65)
+           | i >= 26 && i <= 51 = chr (i + 71)
+           | i >= 52 && i <= 61 = chr (i - 4)
+           | i == 62            = '+'
+           | i == 63            = '/'
+           | otherwise          = error $ "Incorrect integer in toBase64: " ++ show i
 
 isContinuation :: Int -> Bool
 isContinuation digit = digit .&. continuationBit > 0
@@ -48,6 +69,10 @@ fromVLQSigned i =
   let negative = i .&. 1 == 1
       result = i `shiftR` 1
   in  if negative then -result else result
+
+toVLQSigned :: Int -> Int
+toVLQSigned i =
+  abs i `shiftL` 1 + if i < 0 then 1 else 0
 
 baseShift :: Int
 baseShift = 5
