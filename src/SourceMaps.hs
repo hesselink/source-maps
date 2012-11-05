@@ -22,3 +22,13 @@ generateFile fp sm = LBS.writeFile fp (generate sm)
 
 generate :: SourceMap -> ByteString
 generate = Concrete.generate . G.generate
+
+merge :: [SourceMap] -> SourceMap -> SourceMap
+merge sources final = final { mappings = map mp (mappings final) }
+  where
+    srcs = map (\m -> (outputFile m, mappings m)) sources
+    mp gc@(GeneratedCode _) = gc
+    mp (OriginalMapping genLoc origFile origLoc origName) =
+      let Just mps = lookup origFile srcs
+          mapp  = last [m | m@OriginalMapping{} <- mps, generatedLocation m <= origLoc]
+      in mapp { generatedLocation = genLoc }
