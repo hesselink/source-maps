@@ -30,7 +30,6 @@ data Mapping
     }
   deriving Show
 
-data Location = Location { line :: Int, column :: Int } deriving Show
 originalFile :: Mapping -> Maybe FilePath
 originalFile m@OriginalMapping{} = Just (_originalFile m)
 originalFile _                   = Nothing
@@ -43,5 +42,6 @@ originalName :: Mapping -> Maybe Text
 originalName m@OriginalMapping{} = _originalName m
 originalName _                   = Nothing
 
+data Location = Location { line :: Int, column :: Int } deriving (Show, Eq, Ord)
 
 type Result = Either String
