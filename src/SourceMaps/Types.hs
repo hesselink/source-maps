@@ -1,4 +1,16 @@
-module SourceMaps.Types (SourceMap(..), Mapping(..), Location(..), Result) where
+module SourceMaps.Types
+  ( SourceMap(..)
+
+  , Mapping(GeneratedCode, OriginalMapping)
+  , generatedLocation
+  , originalFile
+  , originalLocation
+  , originalName
+
+  , Location(..)
+
+  , Result
+  ) where
 
 import Data.Text (Text)
 
@@ -12,12 +24,24 @@ data Mapping
     { generatedLocation :: Location }
   | OriginalMapping
     { generatedLocation :: Location
-    , originalFile      :: FilePath
-    , originalLocation  :: Location
-    , originalName      :: Maybe Text
+    , _originalFile      :: FilePath
+    , _originalLocation  :: Location
+    , _originalName      :: Maybe Text
     }
   deriving Show
 
 data Location = Location { line :: Int, column :: Int } deriving Show
+originalFile :: Mapping -> Maybe FilePath
+originalFile m@OriginalMapping{} = Just (_originalFile m)
+originalFile _                   = Nothing
+
+originalLocation :: Mapping -> Maybe Location
+originalLocation m@OriginalMapping{} = Just (_originalLocation m)
+originalLocation _                   = Nothing
+
+originalName :: Mapping -> Maybe Text
+originalName m@OriginalMapping{} = _originalName m
+originalName _                   = Nothing
+
 
 type Result = Either String
