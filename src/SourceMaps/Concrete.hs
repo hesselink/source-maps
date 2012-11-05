@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module SourceMaps.Concrete (SourceMap (..), parse) where
+module SourceMaps.Concrete (SourceMap (..), parse, generate) where
 
 import Data.Text (Text)
 import Data.Aeson.TH (deriveJSON)
@@ -30,3 +30,6 @@ parse bs =
         Json.Success a -> return a
         Json.Error   e -> throwError e
     A.Fail _ _ e -> throwError e
+
+generate :: SourceMap -> ByteString
+generate = Json.encode
