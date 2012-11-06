@@ -28,7 +28,7 @@ data Mapping
     , _originalLocation  :: Location
     , _originalName      :: Maybe Text
     }
-  deriving Show
+  deriving (Eq, Show)
 
 originalFile :: Mapping -> Maybe FilePath
 originalFile m@OriginalMapping{} = Just (_originalFile m)
