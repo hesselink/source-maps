@@ -9,10 +9,12 @@ module SourceMaps
   , merge
   ) where
 
-import Control.Monad ((<=<))
+import Control.Monad.Error
 import Data.ByteString.Lazy (ByteString)
-import Data.Maybe (fromMaybe)
 import qualified Data.ByteString.Lazy as LBS
+import Data.List (sortBy, find)
+import Data.Ord (comparing)
+import Safe
 
 import SourceMaps.Types
 import qualified SourceMaps.Concrete  as Concrete
@@ -32,14 +34,21 @@ generateFile fp sm = LBS.writeFile fp (generate sm)
 generate :: SourceMap -> ByteString
 generate = Concrete.generate . G.generate
 
-merge :: [SourceMap] -> SourceMap -> SourceMap
-merge sources final = final { mappings = map mp (mappings final) }
+merge :: [SourceMap] -> SourceMap -> Result SourceMap
+merge sources final =
+  do newMappings <- mapM mp (mappings final)
+     return final { mappings = newMappings }
   where
-    srcs = map (\m -> (outputFile m, mappings m)) sources
-    mp gc@GeneratedCode{}                          = gc
+    mp gc@GeneratedCode{}                          = return gc
     mp (OriginalMapping genLoc origFile origLoc _) =
-      let sms = fromMaybe
-                  (error "merge: final file refers to file that isn't in sources")
-                  (lookup origFile srcs)
-          sm  = last [m | m <- sms, generatedLocation m <= origLoc]
-      in sm { generatedLocation = genLoc }
+      do sms <- maybe
+                  (throwError "merge: final file refers to file that isn't in sources")
+                  return
+                  (find ((origFile ==) . outputFile) sources)
+         sm  <- maybe (throwError $ "Location not found in merge: " ++ show origLoc ++ " from " ++ origFile) return (lookupLocation origLoc sms)
+         return sm { generatedLocation = genLoc }
+
+lookupLocation :: Location -> SourceMap -> Maybe Mapping
+lookupLocation loc sm =
+  let sortedMappings = sortBy (flip $ comparing generatedLocation) (mappings sm)
+  in  headMay [m | m <- sortedMappings, generatedLocation m <= loc]
